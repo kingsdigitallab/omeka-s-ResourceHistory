@@ -59,10 +59,11 @@ class Module extends AbstractModule
             }
         }
 
+
         $sharedEventManager->attach(
             'Omeka\Controller\Admin\Item',
             'view.show.after',
-            array($this, 'showSource')
+            array($this, 'handleRevisions')
         );
 
     }
@@ -96,10 +97,18 @@ class Module extends AbstractModule
     /**
      * The view function which adds content to the admin panel
      */
-    public function showSource(Event $event)
+    public function handleRevisions(Event $event)
     {
         // Get the id via $item->id()
         $item = $event->getTarget()->item;
+        $revision_changed = false;
+        
+        if(isset($_POST['revision_id']))
+        {
+            // Change the revision
+
+            $revision_changed = true;
+        }
 
         // Setup our renderers
         $renderer = new PhpRenderer();
@@ -121,13 +130,16 @@ class Module extends AbstractModule
                             ->getQuery();
 
         $model->revisions = $qb->getArrayResult();
-
+        $model->item_id = $item->id();
+        $model->revision_changed = $revision_changed;
 
 
         // Render
         $html = $renderer->render($model);
         echo $html;
     }
+
+
 
     public function install(ServiceLocatorInterface $serviceLocator)
     {

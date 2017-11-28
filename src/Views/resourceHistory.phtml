@@ -1,3 +1,11 @@
+
+<?php if($this->revision_changed) { ?>
+<div class="notification" style="background: rgba(200,50,50,0.2); border: 1px solid rgba(200,50,50,0.6); color: #000; margin: 10px 0; padding: 10px; text-align: center;">
+    <strong>Revision changed</strong>
+</div>
+
+<?php } ?>
+
 <div class="property">
     <h4>Revisions</h4>
 
@@ -8,7 +16,13 @@
             foreach($this->revisions as $rev)
             { ?>
                 <div>
-                    <?php echo date_format($rev['created'], 'g:ia \o\n l jS F Y');?> - <a href="#">Preview</a> / <a href="#">Restore</a>
+                    <form method='post' action=''>
+                        <?php echo date_format($rev['created'], 'g:ia \o\n l jS F Y');?>
+                        <input type="hidden" name="revision_id" value="<?php echo $rev['id'];?>">
+                        <input type="hidden" name="revision_content" value="<?php echo $rev['content'];?>">
+
+                        <input type="submit" value="Restore">
+                    </form>
                 </div>
             <?php }
         } ?>
