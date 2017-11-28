@@ -11,6 +11,9 @@ use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 use Zend\Mvc\MvcEvent;
 use Zend\ServiceManager\ServiceLocatorInterface;
+use Zend\View\Renderer\PhpRenderer;
+use Zend\View\Resolver;
+use Zend\View\Model\ViewModel;
 
 class Module extends AbstractModule
 {
@@ -55,6 +58,13 @@ class Module extends AbstractModule
                 );
             }
         }
+
+        $sharedEventManager->attach(
+            'Omeka\Controller\Admin\Item',
+            'view.show.after',
+            array($this, 'showSource')
+        );
+
     }
 
     public function saveRevision(Event $event)
@@ -82,6 +92,43 @@ class Module extends AbstractModule
         ));
     }
 
+
+    /**
+     * The view function which adds content to the admin panel
+     */
+    public function showSource(Event $event)
+    {
+        // Get the id via $item->id()
+        $item = $event->getTarget()->item;
+
+        // Setup our renderers
+        $renderer = new PhpRenderer();
+        $resolver = new Resolver\TemplatePathStack();
+        $resolver->setPaths(array(__DIR__ . '/src/Views/'));
+        $renderer->setResolver($resolver);
+
+        // Setup our model
+        $model = new ViewModel();
+        $model->setTemplate('resourceHistory');
+        
+        // Check for revisions
+        $qb = $this->manager->createQueryBuilder()
+                            ->select('c')
+                            ->from('ResourceHistory\Entity\ResourceHistory', 'c')
+                            ->where('c.resource = :resource_id')
+                            ->setParameter('resource_id', $item->id())
+                            ->orderBy('c.created', "DESC")
+                            ->getQuery();
+
+        $model->revisions = $qb->getArrayResult();
+
+
+
+        // Render
+        $html = $renderer->render($model);
+        echo $html;
+    }
+
     public function install(ServiceLocatorInterface $serviceLocator)
     {
         $conn = $serviceLocator->get('Omeka\Connection');
@@ -101,6 +148,8 @@ class Module extends AbstractModule
         $conn->exec('ALTER TABLE resource_history ADD CONSTRAINT FK_RESOURCEHISTORY_RESOURCE FOREIGN KEY (resource_id) REFERENCES resource (id) ON DELETE SET NULL;');
         $conn->exec('ALTER TABLE resource_history ADD CONSTRAINT FK_RESOURCEHISTORY_AUTHOR FOREIGN KEY (author_id) REFERENCES user (id) ON DELETE SET NULL;');
     }
+
+
 
     public function uninstall(ServiceLocatorInterface $serviceLocator)
     {

@@ -1,0 +1,16 @@
+<div class="property">
+    <h4>Revisions</h4>
+
+    <div class="values">
+        <?php if(empty($this->revisions)) {  ?>
+            <strong>No revisions to show</strong>
+        <?php } else {
+            foreach($this->revisions as $rev)
+            { ?>
+                <div>
+                    <?php echo date_format($rev['created'], 'g:ia \o\n l jS F Y');?> - <a href="#">Preview</a> / <a href="#">Restore</a>
+                </div>
+            <?php }
+        } ?>
+    </div>    
+</div>
