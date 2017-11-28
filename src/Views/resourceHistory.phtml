@@ -19,7 +19,7 @@
                     <form method='post' action=''>
                         <?php echo date_format($rev['created'], 'g:ia \o\n l jS F Y');?>
                         <input type="hidden" name="revision_id" value="<?php echo $rev['id'];?>">
-                        <input type="hidden" name="revision_content" value="<?php echo $rev['content'];?>">
+                        <input type="hidden" name="revision_content" value='<?php echo $rev['content'];?>'>
 
                         <input type="submit" value="Restore">
                     </form>

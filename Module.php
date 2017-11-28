@@ -103,10 +103,14 @@ class Module extends AbstractModule
         $item = $event->getTarget()->item;
         $revision_changed = false;
         
-        if(isset($_POST['revision_id']))
+        if(isset($_POST['revision_id']) && isset($_POST['revision_content']) && !empty($_POST['revision_id']) && !empty($_POST['revision_content']) )
         {
-            // Change the revision
+            // This is the values() data from the saved revision
+            $revision_item = json_decode($_POST['revision_content']);
+            
+            // Restore content here (TODO)
 
+            // Set a flag for UI display
             $revision_changed = true;
         }
 
