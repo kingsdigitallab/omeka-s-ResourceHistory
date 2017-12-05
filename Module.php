@@ -14,6 +14,8 @@ use Zend\ServiceManager\ServiceLocatorInterface;
 use Zend\View\Renderer\PhpRenderer;
 use Zend\View\Resolver;
 use Zend\View\Model\ViewModel;
+use Doctrine\ORM\Query\ResultSetMapping;
+use Doctrine\DBAL\Driver\PDOException;
 
 class Module extends AbstractModule
 {
@@ -101,14 +103,51 @@ class Module extends AbstractModule
     {
         // Get the id via $item->id()
         $item = $event->getTarget()->item;
+
         $revision_changed = false;
         
         if(isset($_POST['revision_id']) && isset($_POST['revision_content']) && !empty($_POST['revision_id']) && !empty($_POST['revision_content']) )
         {
             // This is the values() data from the saved revision
-            $revision_item = json_decode($_POST['revision_content']);
+            $revision_item = json_decode($_POST['revision_content'], true);
             
-            // Restore content here (TODO)
+            $resource_id = $item->id();
+
+            $rsm = new ResultSetMapping();
+            $query_string = "INSERT INTO value (resource_id, property_id, type, value) VALUES";
+
+            // First we delete:
+            try
+            {
+                $query = $this->manager->createNativeQuery("DELETE FROM value WHERE resource_id = '$resource_id';", $rsm)->getResult();
+            } catch(PDOException $e)
+            {
+                echo "Caught an error!";
+            }
+
+            foreach($revision_item as $r)
+            {
+
+                $property_id = utf8_encode($r['values'][0]['property_id']);
+                $type = utf8_encode($r['values'][0]['type']);
+                $value = utf8_encode($r['values'][0]['@value']);
+
+                $query_string = $query_string . " ('$resource_id', '$property_id', '$type', '$value')";
+
+                if ($r === end($revision_item))
+                {
+                    $query_string = $query_string . ";";
+                } else
+                {
+                    $query_string = $query_string . ",";
+                }
+            }
+
+            try
+            {
+                $query = $this->manager->createNativeQuery($query_string, $rsm)->getResult();
+            } catch(PDOException $e)
+            {}
 
             // Set a flag for UI display
             $revision_changed = true;
@@ -124,6 +163,7 @@ class Module extends AbstractModule
         $model = new ViewModel();
         $model->setTemplate('resourceHistory');
         
+       
         // Check for revisions
         $qb = $this->manager->createQueryBuilder()
                             ->select('c')
@@ -132,6 +172,7 @@ class Module extends AbstractModule
                             ->setParameter('resource_id', $item->id())
                             ->orderBy('c.created', "DESC")
                             ->getQuery();
+
 
         $model->revisions = $qb->getArrayResult();
         $model->item_id = $item->id();
