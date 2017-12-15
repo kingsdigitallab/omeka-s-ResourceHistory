@@ -72,18 +72,20 @@ class Module extends AbstractModule
 
     public function saveRevision(Event $event)
     {   
-        //$response = $event->getParam('response');
-        print_r($event->getTarget());
-        die();
+        
+        $request = $event->getParam('request');
+        $id = $request->getId();
+        $resource = $event->getTarget()->getEntityManager()->find('Omeka\Entity\Resource', $id);
 
-        $r = $this->getServiceLocator()->get('Omeka\ApiAdapterManager')->get('items')->getRepresentation($resource);
+        $response = $this->getServiceLocator()->get('Omeka\ApiManager')->read('resources', $id);
+        $resourceRepresentation = $response->getContent();
 
         $version = new ResourceHistory;
         $version->setResource($resource);
         $version->setEvent($event->getName());
         $version->setAuthor($resource->getOwner());
         $version->setCreated($resource->getModified());
-        $version->setContent(json_encode($r->values()));
+        $version->setContent(json_encode($resourceRepresentation->values()));
 
         $this->manager->persist($version);
         $this->manager->flush();
