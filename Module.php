@@ -48,7 +48,7 @@ class Module extends AbstractModule
                 ];
 
         $events = [
-            'api.update.post',
+            'api.update.pre',
         ];
 
         foreach ($triggerIdentifiers as $identifier) {
@@ -71,9 +71,10 @@ class Module extends AbstractModule
     }
 
     public function saveRevision(Event $event)
-    {
-        $response = $event->getParam('response');
-        $resource = $response->getContent();
+    {   
+        //$response = $event->getParam('response');
+        print_r($event->getTarget());
+        die();
 
         $r = $this->getServiceLocator()->get('Omeka\ApiAdapterManager')->get('items')->getRepresentation($resource);
 
@@ -121,9 +122,8 @@ class Module extends AbstractModule
             {
                 $query = $this->manager->createNativeQuery("DELETE FROM value WHERE resource_id = '$resource_id';", $rsm)->getResult();
             } catch(PDOException $e)
-            {
-                echo "Caught an error!";
-            }
+            {}
+            
 
             foreach($revision_item as $r)
             {
