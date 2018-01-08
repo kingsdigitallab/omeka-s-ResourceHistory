@@ -116,6 +116,28 @@ class Module extends AbstractModule
             
             $resource_id = $item->id();
 
+            $resource = $this->manager->find('Omeka\Entity\Resource', $resource_id);
+
+            $response = $this->getServiceLocator()->get('Omeka\ApiManager')->read('resources', $resource_id);
+            $resourceRepresentation = $response->getContent();
+
+            $version = new ResourceHistory;
+            $version->setResource($resource);
+            $version->setEvent($event->getName());
+            $version->setAuthor($resource->getOwner());
+            $version->setCreated($resource->getModified());
+            $version->setContent(json_encode($resourceRepresentation->values()));
+
+        $this->manager->persist($version);
+        $this->manager->flush();
+
+        $this->logger->debug(sprintf(
+            'Saved version %d for resource %d with event %s',
+            $version->getId(),
+            $version->getResourceId(),
+            $version->getEvent()
+        ));
+
             $rsm = new ResultSetMapping();
             $query_string = "INSERT INTO value (resource_id, property_id, type, value) VALUES";
 
@@ -153,6 +175,7 @@ class Module extends AbstractModule
 
             // Set a flag for UI display
             $revision_changed = true;
+            header("Refresh:0");
         }
 
         // Setup our renderers
