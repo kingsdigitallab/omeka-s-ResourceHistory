@@ -36,6 +36,11 @@ class Module extends AbstractModule
         $this->manager = $this->getServiceLocator()->get('Omeka\EntityManager');
     }
 
+    public function getConfig()
+    {
+        return include __DIR__ . '/config/module.config.php';
+    }
+
     /**
      * Attach listeners to events.
      *
