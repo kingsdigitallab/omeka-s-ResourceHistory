@@ -51,7 +51,7 @@ class ResourceStats extends AbstractBlockLayout
     {
         $results = array();
 
-        $resourceClass = explode(',', $block->dataValue('resource-class'));
+        $resourceClass = $block->dataValue('resource-class');
         $site = $block->page()->site();
 
         $query['site_id'] = $site->id();
