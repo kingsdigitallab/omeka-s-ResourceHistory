@@ -21,18 +21,27 @@ class ResourceStats extends AbstractBlockLayout
         SitePageRepresentation $page = null,
         SitePageBlockRepresentation $block = null
     ) {
-        $text = new Text("o:block[__blockIndex__][o:data][resource-classes]");
+        $text = new Text("o:block[__blockIndex__][o:data][resource-class]");
+        $label = new Text("o:block[__blockIndex__][o:data][label]");
 
         if ($block) {
-            $text->setAttribute('value', $block->dataValue('resource-classes'));
+            $text->setAttribute('value', $block->dataValue('resource-class'));
+            $label->setAttribute('value', $block->dataValue('label'));
         }
 
         $html = '<div class="field"><div class="field-meta">';
-        $html .= '<label>' . $view->translate('Resource Class Ids') . '</label>';
+        $html .= '<label>' . $view->translate('Resource Class Id') . '</label>';
         $html .= '<a href="#" class="expand"></a>';
-        $html .= '<div class="collapsible"><div class="field-description">' . $view->translate('Comma separated list of the resource classes (ids) to generate stats for.') . '</div></div>';
+        $html .= '<div class="collapsible"><div class="field-description">' . $view->translate('Resource classe (id) to generate counts for.') . '</div></div>';
         $html .= '</div>';
         $html .= '<div class="inputs">' . $view->formRow($text) . '</div>';
+        $html .= '</div>';
+
+        $html .= '<div class="field"><div class="field-meta">';
+        $html .= '<label>' . $view->translate('Label') . '</label>';
+        $html .= '<a href="#" class="expand"></a><div class="collapsible"><div class="field-description">' . $view->translate('Resource class label') . '</div></div>';
+        $html .= '</div>';
+        $html .= '<div class="inputs">' . $view->formRow($label) . '</div>';
         $html .= '</div>';
 
         return $html;
@@ -42,24 +51,22 @@ class ResourceStats extends AbstractBlockLayout
     {
         $results = array();
 
-        $resourceClasses = explode(',', $block->dataValue('resource-classes'));
+        $resourceClass = explode(',', $block->dataValue('resource-class'));
         $site = $block->page()->site();
 
-        foreach ($resourceClasses as $rClass) {
-            $query = array();
-            $query['site_id'] = $site->id();
-            $query['resource_class_id'] = $rClass;
+        $query['site_id'] = $site->id();
+        $query['resource_class_id'] = $resourceClass;
 
-            $response = $view->api()->search('items', $query);
-            $content = $response->getContent();
+        $response = $view->api()->search('items', $query);
+        $content = $response->getContent();
 
-            if ($content) {
-                $results[$content[0]->resourceClass()->uri()] = count($content);
-            }
+        if ($content) {
+            $results[$content[0]->resourceClass()->uri()] = count($content);
         }
 
         return $view->partial('common/block-layout/resource-stats', [
-            'results' => $results
+            'results' => $results,
+            'label' => $block->dataValue('label')
         ]);
     }
 }

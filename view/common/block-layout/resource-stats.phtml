@@ -1,6 +1,10 @@
-<h3>Resource Stats</h3>
+<div class="resource-stats-block">
+<p><strong><?php echo $this->label ?></strong></p>
+<p>
 <?php
 foreach ($this->results as $key => $value) {
-    echo $key . ': ' . $value;
+    echo $key . ': ' . $value . ' items';
 }
 ?>
+</p>
+</div>
