@@ -57,11 +57,16 @@ class ResourceStats extends AbstractBlockLayout
         $query['site_id'] = $site->id();
         $query['resource_class_id'] = $resourceClass;
 
-        $response = $view->api()->search('items', $query);
-        $content = $response->getContent();
+        $counter = 0;
 
-        if ($content) {
-            $results[$content[0]->resourceClass()->uri()] = count($content);
+        foreach (['items', 'media'] as $resource) {
+            $response = $view->api()->search($resource, $query);
+            $content = $response->getContent();
+
+            if ($content) {
+                $counter += count($content);
+                $results[$content[0]->resourceClass()->uri()] = $counter;
+            }
         }
 
         return $view->partial('common/block-layout/resource-stats', [
