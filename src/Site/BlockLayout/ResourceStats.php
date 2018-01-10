@@ -54,7 +54,9 @@ class ResourceStats extends AbstractBlockLayout
         $resourceClass = $block->dataValue('resource-class');
         $site = $block->page()->site();
 
-        $query['site_id'] = $site->id();
+        // commenting site_id for now because most of the images don't seem to
+        // be associated with a site
+        // $query['site_id'] = $site->id();
         $query['resource_class_id'] = $resourceClass;
 
         $counter = 0;
@@ -64,7 +66,7 @@ class ResourceStats extends AbstractBlockLayout
             $content = $response->getContent();
 
             if ($content) {
-                $counter += count($content);
+                $counter = $counter + count($content);
                 $results[$content[0]->resourceClass()->uri()] = $counter;
             }
         }
