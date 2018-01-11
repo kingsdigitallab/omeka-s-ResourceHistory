@@ -21,8 +21,8 @@ class Module extends AbstractModule
 {
 
     const RESOURCE = 'items';
-    const EAC_RECORD_PROPERTY = 'eac:p.entityType';
-    const RECORD_ID_PROPERTY = 'eac:p.recordId';
+    const EAC_RECORD_PROPERTY = 'eac:p_entityType';
+    const RECORD_ID_PROPERTY = 'eac:p_recordId';
 
     protected $logger;
 
@@ -85,10 +85,12 @@ class Module extends AbstractModule
                         $content = $event->getParam('request')->getContent();
 
                         if (array_key_exists(self::EAC_RECORD_PROPERTY, $content)) {
+                            $recordId = sprintf('GPP-%08d', $item->getId());
+
                             if (array_key_exists(self::RECORD_ID_PROPERTY, $content)) {
-                                $content[self::RECORD_ID_PROPERTY][0]['@value'] = $item->getId();
+                                $content[self::RECORD_ID_PROPERTY][0]['@value'] = $recordId;
                             } else {
-                                $content[self::RECORD_ID_PROPERTY][0]['@value'] = $item->getId();
+                                $content[self::RECORD_ID_PROPERTY][0]['@value'] = $recordId;
                                 $content[self::RECORD_ID_PROPERTY][0]['property_id'] = 1021;
                                 $content[self::RECORD_ID_PROPERTY][0]['type'] = 'literal';
                             }
