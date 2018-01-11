@@ -1,24 +1,28 @@
 <?php
-
 namespace ResourceHistory;
 
+use Doctrine\DBAL\Driver\PDOException;
 use Doctrine\ORM\EntityManager;
-use ResourceHistory\Entity\ResourceHistory;
+use Doctrine\ORM\Query\ResultSetMapping;
+use Omeka\Api\Request;
 use Omeka\Module\AbstractModule;
+use ResourceHistory\Entity\ResourceHistory;
 use Zend\EventManager\Event;
 use Zend\EventManager\SharedEventManagerInterface;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 use Zend\Mvc\MvcEvent;
 use Zend\ServiceManager\ServiceLocatorInterface;
+use Zend\View\Model\ViewModel;
 use Zend\View\Renderer\PhpRenderer;
 use Zend\View\Resolver;
-use Zend\View\Model\ViewModel;
-use Doctrine\ORM\Query\ResultSetMapping;
-use Doctrine\DBAL\Driver\PDOException;
 
 class Module extends AbstractModule
 {
+
+    const RESOURCE = 'items';
+    const EAC_RECORD_PROPERTY = 'eac:p.entityType';
+    const RECORD_ID_PROPERTY = 'eac:p.recordId';
 
     protected $logger;
 
@@ -50,34 +54,67 @@ class Module extends AbstractModule
     {
         $triggerIdentifiers = [
             'Omeka\Api\Adapter\ItemAdapter',
-                ];
+        ];
 
-        $events = [
-            'api.update.pre',
+        $revisionEvents = [
+            'api.update.pre'
+        ];
+
+        $autoFieldsEvents = [
+            'api.create.post',
+            'api.update.post'
         ];
 
         foreach ($triggerIdentifiers as $identifier) {
-            foreach ($events as $event) {
+            foreach ($revisionEvents as $event) {
                 $sharedEventManager->attach(
                     $identifier,
                     $event,
                     array($this, 'saveRevision')
                 );
             }
-        }
 
+            foreach ($autoFieldsEvents as $event) {
+                $sharedEventManager->attach(
+                    $identifier,
+                    $event,
+                    function (\Zend\EventManager\Event $event) {
+                        $response = $event->getParam('response');
+                        $item = $response->getContent();
+
+                        $content = $event->getParam('request')->getContent();
+
+                        if (array_key_exists(self::EAC_RECORD_PROPERTY, $content)) {
+                            if (array_key_exists(self::RECORD_ID_PROPERTY, $content)) {
+                                $content[self::RECORD_ID_PROPERTY][0]['@value'] = $item->getId();
+                            } else {
+                                $content[self::RECORD_ID_PROPERTY][0]['@value'] = $item->getId();
+                                $content[self::RECORD_ID_PROPERTY][0]['property_id'] = 1021;
+                                $content[self::RECORD_ID_PROPERTY][0]['type'] = 'literal';
+                            }
+                        }
+
+                        $request = new Request(Request::UPDATE, self::RESOURCE);
+                        $request->setId($item->getId());
+                        $request->setContent($content);
+
+                        $itemAdapter = $event->getTarget();
+                        $itemAdapter->update($request);
+                    }
+                );
+            }
+        }
 
         $sharedEventManager->attach(
             'Omeka\Controller\Admin\Item',
             'view.show.after',
             array($this, 'handleRevisions')
         );
-
     }
 
     public function saveRevision(Event $event)
-    {   
-        
+    {
+
         $request = $event->getParam('request');
         $id = $request->getId();
         $resource = $event->getTarget()->getEntityManager()->find('Omeka\Entity\Resource', $id);
@@ -95,12 +132,14 @@ class Module extends AbstractModule
         $this->manager->persist($version);
         $this->manager->flush();
 
-        $this->logger->debug(sprintf(
-            'Saved version %d for resource %d with event %s',
-            $version->getId(),
-            $version->getResourceId(),
-            $version->getEvent()
-        ));
+        $this->logger->debug(
+            sprintf(
+                'Saved version %d for resource %d with event %s',
+                $version->getId(),
+                $version->getResourceId(),
+                $version->getEvent()
+            )
+        );
     }
 
 
@@ -113,12 +152,11 @@ class Module extends AbstractModule
         $item = $event->getTarget()->item;
 
         $revision_changed = false;
-        
-        if(isset($_POST['revision_id']) && isset($_POST['revision_content']) && !empty($_POST['revision_id']) && !empty($_POST['revision_content']) )
-        {
+
+        if (isset($_POST['revision_id']) && isset($_POST['revision_content']) && !empty($_POST['revision_id']) && !empty($_POST['revision_content'])) {
             // This is the values() data from the saved revision
             $revision_item = json_decode($_POST['revision_content'], true);
-            
+
             $resource_id = $item->id();
 
             $resource = $this->manager->find('Omeka\Entity\Resource', $resource_id);
@@ -133,50 +171,46 @@ class Module extends AbstractModule
             $version->setCreated($resource->getModified());
             $version->setContent(json_encode($resourceRepresentation->values()));
 
-        $this->manager->persist($version);
-        $this->manager->flush();
+            $this->manager->persist($version);
+            $this->manager->flush();
 
-        $this->logger->debug(sprintf(
-            'Saved version %d for resource %d with event %s',
-            $version->getId(),
-            $version->getResourceId(),
-            $version->getEvent()
-        ));
+            $this->logger->debug(
+                sprintf(
+                    'Saved version %d for resource %d with event %s',
+                    $version->getId(),
+                    $version->getResourceId(),
+                    $version->getEvent()
+                )
+            );
 
             $rsm = new ResultSetMapping();
             $query_string = "INSERT INTO value (resource_id, property_id, type, value) VALUES";
 
             // First we delete:
-            try
-            {
+            try {
                 $query = $this->manager->createNativeQuery("DELETE FROM value WHERE resource_id = '$resource_id';", $rsm)->getResult();
-            } catch(PDOException $e)
-            {}
-            
+            } catch (PDOException $e) {
+            }
 
-            foreach($revision_item as $r)
-            {
 
+            foreach ($revision_item as $r) {
                 $property_id = utf8_encode($r['values'][0]['property_id']);
                 $type = utf8_encode($r['values'][0]['type']);
                 $value = utf8_encode($r['values'][0]['@value']);
 
                 $query_string = $query_string . " ('$resource_id', '$property_id', '$type', '$value')";
 
-                if ($r === end($revision_item))
-                {
+                if ($r === end($revision_item)) {
                     $query_string = $query_string . ";";
-                } else
-                {
+                } else {
                     $query_string = $query_string . ",";
                 }
             }
 
-            try
-            {
+            try {
                 $query = $this->manager->createNativeQuery($query_string, $rsm)->getResult();
-            } catch(PDOException $e)
-            {}
+            } catch (PDOException $e) {
+            }
 
             // Set a flag for UI display
             $revision_changed = true;
@@ -192,8 +226,8 @@ class Module extends AbstractModule
         // Setup our model
         $model = new ViewModel();
         $model->setTemplate('resourceHistory');
-        
-       
+
+
         // Check for revisions
         $qb = $this->manager->createQueryBuilder()
                             ->select('c')
