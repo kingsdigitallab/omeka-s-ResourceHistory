@@ -1,10 +1,4 @@
 <div class="resource-stats-block">
 <p><strong><?php echo $this->label ?></strong></p>
-<p>
-<?php
-foreach ($this->results as $key => $value) {
-    echo $key . ': ' . $value . ' items';
-}
-?>
-</p>
+<p><?php echo $this->results ?></p>
 </div>

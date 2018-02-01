@@ -73,7 +73,7 @@ class ResourceStats extends AbstractBlockLayout
         $content = $response->getContent();
 
         if ($content) {
-            $results[$content[0]->resourceClass()->uri()] = count($content);
+            $results = count($content);
         }
 
         return $view->partial('common/block-layout/resource-stats', [
